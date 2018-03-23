@@ -1,0 +1,6 @@
+*.out
+*.in
+sample/
+*.swp
+*.pdf
+
