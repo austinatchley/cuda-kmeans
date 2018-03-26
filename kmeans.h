@@ -38,17 +38,6 @@ public:
   Point &operator/(int val);
 };
 
-class DataSet {
-public:
-  int getDimensions();
-  void setPoints(vector<Point>);
-  const vector<Point> getPoints();
-  const int numPoints();
-
-private:
-  vector<Point> points;
-};
-
 bool Point::operator<(const Point &other) const {
   return this->vals < other.vals;
 }
