@@ -55,7 +55,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
   cudaCheckError("malloc dev_centroids");
 
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
-  cudaCheckErro("malloc dev_cluster");
+  cudaCheckError("malloc dev_cluster");
 
   cudaMemcpy(dev_points, points[0], num_points * num_coords * sizeof(double),
              cudaMemcpyHostToDevice);

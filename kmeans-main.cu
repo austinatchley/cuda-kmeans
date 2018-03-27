@@ -1,5 +1,6 @@
 #include "kmeans.h"
 #include <algorithm>
+#include <fstream>
 #include <cassert>
 #include <cinttypes>
 #include <climits>
@@ -13,11 +14,6 @@
 /*
  * Function Prototypes
  */
-
-void kmeans(double **points, double **centroids, double **old_centroids,
-            int num_points, int num_coords, int num_centroids,
-            int max_iterations, double threshold);
-
 double **random_centroids(double **points, int num_points, int num_clusters,
                           int num_coords);
 void print_point_vector(const vector<Point> &points);
@@ -73,10 +69,13 @@ int main(int argc, char *argv[]) {
   double **old_centroids =
       random_centroids(points, num_points, clusters, num_coords);
 
+  int *cluster = (int *) malloc(clusters * sizeof(int));
+  int *cluster_size = (int *) malloc(clusters * sizeof(int));
+
   clock_t start = clock();
 
   kmeans(points, centroids, old_centroids, num_points, num_coords, clusters,
-         max_iterations, threshold);
+         cluster, cluster_size, max_iterations, threshold);
 
   clock_t duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
@@ -88,7 +87,7 @@ int main(int argc, char *argv[]) {
 double **random_centroids(double **points, int num_points, int num_clusters,
                           int num_coords) {
   srand(time(NULL));
-  vector<int> indicesUsed;
+  vector<int> indices_used;
   double **centroids = (double **)malloc(num_clusters * sizeof(float *));
 
   for (int i = 0; i < num_points; ++i) {
@@ -97,9 +96,9 @@ double **random_centroids(double **points, int num_points, int num_clusters,
     // Generate rand index that hasn't been used
     do {
       index = ((int)rand()) % num_points;
-    } while (find(begin(indicesUsed), end(indicesUsed), index) !=
-             end(indicesUsed));
-    indicesUsed.push_back(index);
+    } while (find(begin(indices_used), end(indices_used), index) !=
+             end(indices_used));
+    indices_used.push_back(index);
 
     centroids[index] = (double *)malloc(num_coords * sizeof(double));
     copy(points[index], points[index] + num_coords, centroids[index]);
@@ -122,4 +121,56 @@ void print_point_vector(const vector<Point> &points) {
     }
     cout << point.vals[point.vals.size() - 1] << endl;
   }
+}
+
+double **read_file(vector<Point> &ds, string file_path, int *num_points,
+                   int *num_coords) {
+  vector<Point> points_vec;
+
+  ifstream in_file;
+  in_file.open(file_path);
+
+  if (!in_file) {
+    cerr << "Unable to open input file";
+    exit(1); // call system to stop
+  }
+
+  size_t size = 0;
+  in_file >> size;
+  *num_points = size;
+
+#ifdef DEBUG
+  cout << "Size: " << size << endl;
+#endif
+
+  string line;
+  getline(in_file, line);
+  while (size--) {
+    getline(in_file, line);
+    vector<double> nums;
+    istringstream is(line);
+
+    int line_num;
+    is >> line_num;
+
+    assert(points_vec.size() == line_num - 1);
+
+    double num;
+    while (is >> num)
+      nums.push_back(num);
+
+    Point point(nums);
+    points_vec.push_back(point);
+  }
+
+  in_file.close();
+
+  *num_coords = points_vec[0].getDimensions();
+  double **points = (double **)malloc(points_vec.size() * sizeof(double *));
+  for (int i = 0; i < points_vec.size(); ++i) {
+    points[i] = (double *)malloc(*num_coords * sizeof(double));
+    for (int j = 0; j < *num_coords; ++j)
+      points[i][j] = points_vec[0][j];
+  }
+  return points;
 }
