@@ -1,9 +1,7 @@
 #include "kmeans.h"
 
-#include <cuda_runtime_api.h>
-#ifdef PROFILE
-#include <cuda_profiler_api.h>
-#endif
+#include <cuda.h>
+#include <cuda_runtime.h>
 
 void cudaCheckError(const char *msg);
 
@@ -45,7 +43,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
   cout << "kmeans" << endl;
 
-  cudaSetDevice(0);
+  //cudaSetDevice(0);
   
   cudaMalloc((void **)&dev_points, num_points * num_coords * sizeof(double));
   cudaCheckError("malloc dev_points");

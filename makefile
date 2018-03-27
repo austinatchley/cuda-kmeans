@@ -3,26 +3,23 @@ export CFLAGS
 NVCC = nvcc
 NVCCFLAGS = $(CFLAGS) -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 -lcuda -lcudart --ptxas-options=-v -std=c++11
 
-%.o : %.cu
-		$(NVCC) $(NVCCFLAGS) -o $@ -c $<
+%.o : %.c++
+		g++ $(CFLAGS) -c $< -std=c++11
 
-CUDA_CPP_SRC = kmeans-main.cu
-CUDA_CU_SRC = kmeans-cuda.cu
+CUDA_CPP_SRC = kmeans-main.c++
 
-CUDA_CPP_OBJ = $(CUDA_CPP_SRC:%.cu=%.o)
-CUDA_CU_OBJ = $(CUDA_CU_SRC:%.cu=%.o)
+CUDA_CPP_OBJ = $(CUDA_CPP_SRC:%.c++=%.o)
 
-all: kmeans.out
+all: kmeans-1
 
 kmeans.out: $(CUDA_CPP_OBJ) $(CUDA_CU_OBJ)
 	$(NVCC) $(CFLAGS) -o $@ $(CUDA_CPP_OBJ) $(CUDA_CU_OBJ)
 
-kmeans-1: cuda.o
-	 g++ -c -I/opt/cuda-8.0/include *.c++ -std=c++11
-	 nvcc -o kmeans.out -L/opt/cuda-8.0/lib64 -lcuda -lcudart *.o 
+kmeans-1: $(CUDA_CPP_OBJ) cuda.o
+	 g++ -L/opt/cuda-8.0/lib64 $(CUDA_CPP_OBJ) kmeans-cuda.o -o kmeans.out -std=c++11 -lcuda -lcudart
 
 cuda.o:
-	nvcc $(CFLAGS) -c -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 kmeans-cuda.cu -std=c++11
+	nvcc $(CFLAGS) -c -L/opt/cuda-8.0/lib64 kmeans-cuda.cu -std=c++11 -arch=sm_61
 
 
 
