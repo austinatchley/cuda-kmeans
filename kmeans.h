@@ -59,6 +59,10 @@ public:
 
     return *this;
   }
+
+  double &operator[] (int i) {
+    return vals[i];
+  }
 };
 
 
@@ -74,8 +78,19 @@ typedef std::map<Point, int> pointMap;
 
 
 /*
- * Function Forward Declarations
+ * Function Prototypes
  */
 
-void read_file(vector<Point>&ds, string file_path);
+void kmeans(
+    Point *points,
+    Point *centroids,
+    Point *old_centroids,
+    int num_points,
+    int num_coords,
+    int num_centroids,
+    int max_iterations,
+    double threshold,
+    int workers);
+
+double **read_file(vector<Point>&ds, string file_path, int *size, int *coords);
 #endif

@@ -12,8 +12,8 @@
 
 using namespace std;
 
-void read_file(vector<Point>& ds, string file_path) {
-  vector<Point> points;
+double **read_file(vector<Point>& ds, string file_path, int *num_points, int *num_coords) {
+  vector<Point> points_vec;
 
   ifstream in_file;
   in_file.open(file_path);
@@ -23,8 +23,9 @@ void read_file(vector<Point>& ds, string file_path) {
     exit(1); // call system to stop
   }
 
-  int size;
+  size_t size = 0;
   in_file >> size;
+  *num_points = size;
 
 #ifdef DEBUG
   cout << "Size: " << size << endl;
@@ -40,17 +41,24 @@ void read_file(vector<Point>& ds, string file_path) {
     int line_num;
     is >> line_num;
 
-    assert(points.size() == line_num - 1);
+    assert(points_vec.size() == line_num - 1);
 
     double num;
     while (is >> num)
       nums.push_back(num);
 
     Point point(nums);
-    points.push_back(point);
+    points_vec.push_back(point);
   }
 
   in_file.close();
 
-  copy(begin(points), end(points), begin(ds));
+  *num_coords = points_vec[0].getDimensions();
+  double **points = (double **) malloc(points_vec.size() * sizeof(double *));
+  for (int i = 0; i < points_vec.size(); ++i) {
+    points[i] = (double *) malloc(*num_coords * sizeof(double));
+    for (int j = 0; j < *num_coords; ++j)
+      points[i][j] = points_vec[0][j];
+  }
+  return points;
 }
