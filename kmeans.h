@@ -1,9 +1,6 @@
 #ifndef KMEANS
 #define KMEANS
 
-// uncomment this to enable debug output
-//#define DEBUG
-
 #define DEFAULT_THRESH 0.0000001f
 
 #include <iostream>
@@ -28,49 +25,57 @@ public:
 
   Point(vector<double> newVals) : vals(newVals) {}
 
-  const int getDimensions();
+  int getDimensions() {
+    return vals.size();
+  }
+  
+  bool operator<(const Point &other) const {
+    return this->vals < other.vals;
+  }
 
-  bool operator<(const Point &other) const;
-  bool operator>(const Point &other) const;
-  bool operator==(const Point &other) const;
-  bool operator!=(const Point &other) const;
-  Point &operator+(const Point &other);
-  Point &operator/(int val);
+  bool operator>(const Point &other) const {
+    return this->vals > other.vals;
+  }
+
+  bool operator==(const Point &other) const {
+    return this->vals == other.vals;
+  }
+
+  bool operator!=(const Point &other) const {
+    return this->vals != other.vals;
+  }
+
+  Point &operator+(const Point &other) {
+    for (int i = 0; i < vals.size(); ++i)
+      this->vals[i] += other.vals[i];
+
+    return *this;
+  }
+
+  Point &operator/(int val) {
+    const int len = vals.size();
+    for (int i = 0; i < len; ++i)
+      this->vals[i] = this->vals[i] / val;
+
+    return *this;
+  }
 };
 
-bool Point::operator<(const Point &other) const {
-  return this->vals < other.vals;
-}
 
-bool Point::operator>(const Point &other) const {
-  return this->vals > other.vals;
-}
 
-bool Point::operator==(const Point &other) const {
-  return this->vals == other.vals;
-}
 
-bool Point::operator!=(const Point &other) const {
-  return this->vals != other.vals;
-}
-
-Point &Point::operator+(const Point &other) {
-  for (int i = 0; i < vals.size(); ++i)
-    this->vals[i] += other.vals[i];
-
-  return *this;
-}
-
-Point &Point::operator/(int val) {
-  const int len = vals.size();
-  for (int i = 0; i < len; ++i)
-    this->vals[i] = this->vals[i] / val;
-
-  return *this;
-}
+/*
+ * Namespaces
+ */
 
 namespace point {
 typedef std::map<Point, int> pointMap;
 }
 
+
+/*
+ * Function Forward Declarations
+ */
+
+void read_file(vector<Point>&ds, string file_path);
 #endif
