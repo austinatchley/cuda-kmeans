@@ -25,25 +25,15 @@ public:
 
   Point(vector<double> newVals) : vals(newVals) {}
 
-  int getDimensions() {
-    return vals.size();
-  }
-  
-  bool operator<(const Point &other) const {
-    return this->vals < other.vals;
-  }
+  int getDimensions() { return vals.size(); }
 
-  bool operator>(const Point &other) const {
-    return this->vals > other.vals;
-  }
+  bool operator<(const Point &other) const { return this->vals < other.vals; }
 
-  bool operator==(const Point &other) const {
-    return this->vals == other.vals;
-  }
+  bool operator>(const Point &other) const { return this->vals > other.vals; }
 
-  bool operator!=(const Point &other) const {
-    return this->vals != other.vals;
-  }
+  bool operator==(const Point &other) const { return this->vals == other.vals; }
+
+  bool operator!=(const Point &other) const { return this->vals != other.vals; }
 
   Point &operator+(const Point &other) {
     for (int i = 0; i < vals.size(); ++i)
@@ -60,13 +50,8 @@ public:
     return *this;
   }
 
-  double &operator[] (int i) {
-    return vals[i];
-  }
+  double &operator[](int i) { return vals[i]; }
 };
-
-
-
 
 /*
  * Namespaces
@@ -76,20 +61,13 @@ namespace point {
 typedef std::map<Point, int> pointMap;
 }
 
-
 /*
  * Function Prototypes
  */
 
-void kmeans(
-    Point *points,
-    Point *centroids,
-    Point *old_centroids,
-    int num_points,
-    int num_coords,
-    int num_centroids,
-    int max_iterations,
-    double threshold);
+void kmeans(Point *points, Point *centroids, Point *old_centroids,
+            int num_points, int num_coords, int num_centroids,
+            int max_iterations, double threshold);
 
-double **read_file(vector<Point>&ds, string file_path, int *size, int *coords);
+double **read_file(vector<Point> &ds, string file_path, int *size, int *coords);
 #endif

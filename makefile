@@ -15,7 +15,7 @@ cuda.o:
 
 
 format:
-	clang-format -i *.c *.cu
+	clang-format -i *.c++ *.cu
 	clang-format -i *.h 
 
 add: format yapf

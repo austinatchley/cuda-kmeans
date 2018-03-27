@@ -1,34 +1,27 @@
 #include "kmeans.h"
+#include <algorithm>
+#include <cassert>
+#include <cinttypes>
+#include <climits>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cinttypes>
-#include <cmath>
-#include <cassert>
-#include <algorithm>
 #include <map>
 #include <memory>
-#include <climits>
 
 /*
  * Function Prototypes
  */
 
-void kmeans(
-    double **points,
-    double **centroids,
-    double **old_centroids,
-    int num_points,
-    int num_coords,
-    int num_centroids,
-    int max_iterations,
-    double threshold);
+void kmeans(double **points, double **centroids, double **old_centroids,
+            int num_points, int num_coords, int num_centroids,
+            int max_iterations, double threshold);
 
-
-double **random_centroids(double **points, int num_points, int num_clusters, int num_coords);
+double **random_centroids(double **points, int num_points, int num_clusters,
+                          int num_coords);
 void print_point_vector(const vector<Point> &points);
 void print_help();
-
 
 int main(int argc, char *argv[]) {
   int clusters;
@@ -37,7 +30,6 @@ int main(int argc, char *argv[]) {
   int workers;
   string input;
   vector<int> num_pointsPerCentroid;
-
 
   int opt, val;
   while ((opt = getopt(argc, argv, "hc:t:i:w:I:l")) != -1) {
@@ -71,32 +63,33 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  vector<Point> data_set_vec; 
+  vector<Point> data_set_vec;
   int num_points, num_coords;
   double **points = read_file(data_set_vec, input, &num_points, &num_coords);
 
   cout << num_points << endl;
 
-  double **centroids = (double **) malloc(clusters * sizeof(double *));
-  double **old_centroids = random_centroids(points, num_points, clusters, num_coords);
+  double **centroids = (double **)malloc(clusters * sizeof(double *));
+  double **old_centroids =
+      random_centroids(points, num_points, clusters, num_coords);
 
   clock_t start = clock();
 
-  kmeans(points, centroids, old_centroids, num_points, num_coords, clusters, max_iterations, threshold);
+  kmeans(points, centroids, old_centroids, num_points, num_coords, clusters,
+         max_iterations, threshold);
 
-  clock_t duration = (clock() - start) / (double) CLOCKS_PER_SEC;
+  clock_t duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   cout << duration << endl;
 
-  //print_point_vector(centroids);
+  // print_point_vector(centroids);
 }
 
-
-
-double **random_centroids(double **points, int num_points, int num_clusters, int num_coords) {
+double **random_centroids(double **points, int num_points, int num_clusters,
+                          int num_coords) {
   srand(time(NULL));
   vector<int> indicesUsed;
-  double **centroids = (double **) malloc(num_clusters * sizeof(float *));
+  double **centroids = (double **)malloc(num_clusters * sizeof(float *));
 
   for (int i = 0; i < num_points; ++i) {
     int index;
@@ -108,7 +101,7 @@ double **random_centroids(double **points, int num_points, int num_clusters, int
              end(indicesUsed));
     indicesUsed.push_back(index);
 
-    centroids[index] = (double *) malloc(num_coords * sizeof(double));
+    centroids[index] = (double *)malloc(num_coords * sizeof(double));
     copy(points[index], points[index] + num_coords, centroids[index]);
   }
   return centroids;
@@ -130,4 +123,3 @@ void print_point_vector(const vector<Point> &points) {
     cout << point.vals[point.vals.size() - 1] << endl;
   }
 }
-

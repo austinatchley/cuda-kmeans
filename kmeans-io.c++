@@ -1,18 +1,19 @@
 #include "kmeans.h"
-#include <fstream>
+#include <algorithm>
+#include <cassert>
+#include <cinttypes>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cinttypes>
-#include <cmath>
-#include <cassert>
-#include <algorithm>
+#include <fstream>
 #include <map>
 #include <memory>
 
 using namespace std;
 
-double **read_file(vector<Point>& ds, string file_path, int *num_points, int *num_coords) {
+double **read_file(vector<Point> &ds, string file_path, int *num_points,
+                   int *num_coords) {
   vector<Point> points_vec;
 
   ifstream in_file;
@@ -54,9 +55,9 @@ double **read_file(vector<Point>& ds, string file_path, int *num_points, int *nu
   in_file.close();
 
   *num_coords = points_vec[0].getDimensions();
-  double **points = (double **) malloc(points_vec.size() * sizeof(double *));
+  double **points = (double **)malloc(points_vec.size() * sizeof(double *));
   for (int i = 0; i < points_vec.size(); ++i) {
-    points[i] = (double *) malloc(*num_coords * sizeof(double));
+    points[i] = (double *)malloc(*num_coords * sizeof(double));
     for (int j = 0; j < *num_coords; ++j)
       points[i][j] = points_vec[0][j];
   }
