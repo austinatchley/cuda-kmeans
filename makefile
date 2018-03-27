@@ -2,10 +2,11 @@ all: kmeans
 
 
 kmeans: cuda.o
-	 g++ -o kmeans.out -L/usr/local/cuda/lib64 -lcuda kmeans-io.c++ kmeans-main.c++  kmeans-cuda.o -std=c++11
+	 g++ -c -I/opt/cuda-8.0/include *.c++ -std=c++11
+	 nvcc -o kmeans.out -L/opt/cuda-8.0/lib64 -lcuda -lcudart *.o 
 
 cuda.o:
-	nvcc -c -arch=sm_20 kmeans-cuda.cu -std=c++11
+	nvcc -c -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 kmeans-cuda.cu -std=c++11
 
 
 
