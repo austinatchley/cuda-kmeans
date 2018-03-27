@@ -65,7 +65,7 @@ typedef std::map<Point, int> pointMap;
  * Function Prototypes
  */
 
-void kmeans(Point *points, Point *centroids, Point *old_centroids,
+void kmeans(double **points, double **centroids, double **old_centroids,
             int num_points, int num_coords, int num_centroids,
             int max_iterations, double threshold);
 
