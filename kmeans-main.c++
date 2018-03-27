@@ -1,6 +1,5 @@
 #include "kmeans.h"
 #include <algorithm>
-#include <fstream>
 #include <cassert>
 #include <cinttypes>
 #include <climits>
@@ -8,8 +7,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <memory>
+#include <vector>
 
 /*
  * Function Prototypes
@@ -69,8 +70,8 @@ int main(int argc, char *argv[]) {
   double **old_centroids =
       random_centroids(points, num_points, clusters, num_coords);
 
-  int *cluster = (int *) malloc(clusters * sizeof(int));
-  int *cluster_size = (int *) malloc(clusters * sizeof(int));
+  int *cluster = (int *)malloc(clusters * sizeof(int));
+  int *cluster_size = (int *)malloc(clusters * sizeof(int));
 
   clock_t start = clock();
 

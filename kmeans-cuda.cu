@@ -2,6 +2,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 
 void cudaCheckError(const char *msg);
 
@@ -34,7 +35,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
   int iterations = 0;
 
   for (int i = 0; i < num_points; ++i)
-    cluster[i] = -1; //init cluster membership to default val
+    cluster[i] = -1; // init cluster membership to default val
 
   const size_t threads_per_block = 128; // This is simply a design decision
   const size_t num_blocks =
@@ -43,8 +44,8 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
   cout << "kmeans" << endl;
 
-  //cudaSetDevice(0);
-  
+  // cudaSetDevice(0);
+
   cudaMalloc((void **)&dev_points, num_points * num_coords * sizeof(double));
   cudaCheckError("malloc dev_points");
 
@@ -59,7 +60,8 @@ void kmeans(double **points, double **centroids, double **old_centroids,
              cudaMemcpyHostToDevice);
   cudaCheckError("copy points to device");
 
-  cudaMemcpy(dev_cluster, cluster, num_points * sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(dev_cluster, cluster, num_points * sizeof(int),
+             cudaMemcpyHostToDevice);
   cudaCheckError("copy cluster to device");
 
   do {
@@ -73,13 +75,14 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
     cudaDeviceSynchronize();
 
-    cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int),
+               cudaMemcpyDeviceToHost);
     cudaCheckError("copy clusters back to host");
 
     for (int i = 0; i < num_points; ++i) {
       int cluster_idx = cluster[i];
 
-      //increment cluster_size
+      // increment cluster_size
       ++cluster_size[cluster_idx];
       for (int j = 0; j < num_coords; ++j)
         centroids[cluster_idx][j] += points[i][j];
@@ -91,7 +94,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
           centroids[i][j] /= cluster_size[i];
       }
     }
-    
+
     // compute_change
     //  <<<1, reduction_threads, shared_mem_for_reduction>>>
     //  (centroids, old_centroids, num_centroids, num_coords);

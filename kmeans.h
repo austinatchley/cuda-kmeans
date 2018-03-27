@@ -66,8 +66,8 @@ typedef std::map<Point, int> pointMap;
  */
 
 void kmeans(double **points, double **centroids, double **old_centroids,
-            int num_points, int num_coords, int num_centroids, int *cluster, int *cluster_size,
-            int max_iterations, double threshold);
+            int num_points, int num_coords, int num_centroids, int *cluster,
+            int *cluster_size, int max_iterations, double threshold);
 
 double **read_file(vector<Point> &ds, string file_path, int *size, int *coords);
 #endif
