@@ -22,8 +22,7 @@ void kmeans(
     int num_coords,
     int num_centroids,
     int max_iterations,
-    double threshold,
-    int workers);
+    double threshold);
 
 
 double **random_centroids(double **points, int num_points, int num_clusters, int num_coords);
@@ -65,11 +64,6 @@ int main(int argc, char *argv[]) {
         max_iterations = val;
       break;
 
-    case 'w':
-      assert(optarg);
-      workers = atoi(optarg);
-      break;
-
     case 'I':
       assert(optarg);
       input = optarg;
@@ -88,7 +82,7 @@ int main(int argc, char *argv[]) {
 
   clock_t start = clock();
 
-  kmeans(points, centroids, old_centroids, num_points, num_coords, clusters, max_iterations, threshold, workers);
+  kmeans(points, centroids, old_centroids, num_points, num_coords, clusters, max_iterations, threshold);
 
   clock_t duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
@@ -122,7 +116,7 @@ double **random_centroids(double **points, int num_points, int num_clusters, int
 
 void print_help() {
   cout << "Format: " << endl
-       << "kmeans -c clusters -t threshold -i iterations -w workers -I "
+       << "kmeans -c clusters -t threshold -i iterations -I file"
           "path/to/input"
        << endl;
 }

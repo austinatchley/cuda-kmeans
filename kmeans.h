@@ -89,8 +89,7 @@ void kmeans(
     int num_coords,
     int num_centroids,
     int max_iterations,
-    double threshold,
-    int workers);
+    double threshold);
 
 double **read_file(vector<Point>&ds, string file_path, int *size, int *coords);
 #endif

@@ -1,3 +1,6 @@
+CFLAGS:=
+export CFLAGS
+
 all: kmeans 
 
 
@@ -6,14 +9,14 @@ kmeans: cuda.o
 	 nvcc -o kmeans.out -L/opt/cuda-8.0/lib64 -lcuda -lcudart *.o 
 
 cuda.o:
-	nvcc -c -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 kmeans-cuda.cu -std=c++11
+	nvcc $(CFLAGS) -c -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 kmeans-cuda.cu -std=c++11
 
 
 
 
 format:
-	clang-format -i kmeans.cu 
-	clang-format -i kmeans.h 
+	clang-format -i *.c *.cu
+	clang-format -i *.h 
 
 add: format yapf
 	git add .
