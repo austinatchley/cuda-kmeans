@@ -1,12 +1,14 @@
 #include "kmeans.h"
 
+#include <cassert>
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
 void cudaCheckError(const char *msg);
 
-__global__ static void find_nearest_cluster(double **points, double **centroids,
+__global__ static void find_nearest_cluster(double **points, double **centroids, int *cluster,
                                             int num_points, int num_coords,
                                             int num_centroids) {
   extern __shared__ char shared[]; // array of bytes of shared memory
@@ -71,7 +73,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
     find_nearest_cluster<<<num_blocks, threads_per_block,
                            shared_mem_per_block>>>(
-        points, centroids, num_points, num_coords, num_centroids);
+        dev_points, dev_centroids, dev_cluster, num_points, num_coords, num_centroids);
 
     cudaDeviceSynchronize();
 
@@ -81,6 +83,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
     for (int i = 0; i < num_points; ++i) {
       int cluster_idx = cluster[i];
+      assert(cluster_idx >= 0);
 
       // increment cluster_size
       ++cluster_size[cluster_idx];

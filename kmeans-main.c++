@@ -89,14 +89,14 @@ double **random_centroids(double **points, int num_points, int num_clusters,
                           int num_coords) {
   srand(time(NULL));
   vector<int> indices_used;
-  double **centroids = (double **)malloc(num_clusters * sizeof(float *));
+  double **centroids = (double **)malloc(num_clusters * sizeof(double *));
 
-  for (int i = 0; i < num_points; ++i) {
+  for (int i = 0; i < num_clusters; ++i) {
     int index;
 
     // Generate rand index that hasn't been used
     do {
-      index = ((int)rand()) % num_points;
+      index = ((int)rand()) % num_clusters;
     } while (find(begin(indices_used), end(indices_used), index) !=
              end(indices_used));
     indices_used.push_back(index);
