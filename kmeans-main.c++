@@ -15,13 +15,13 @@
 /*
  * Function Prototypes
  */
-double **random_centroids(double **points, int num_points, int num_clusters,
+double **random_centroids(double **points, int num_points, int num_centroids,
                           int num_coords);
 void print_point_vector(const vector<Point> &points);
 void print_help();
 
 int main(int argc, char *argv[]) {
-  int clusters;
+  int num_centroids;
   double threshold = DEFAULT_THRESH;
   int max_iterations = INT_MAX;
   int workers;
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
     case 'c':
       assert(optarg);
-      clusters = atoi(optarg);
+      num_centroids = atoi(optarg);
       break;
 
     case 't':
@@ -66,37 +66,40 @@ int main(int argc, char *argv[]) {
 
   cout << num_points << endl;
 
-  double **centroids = (double **)malloc(clusters * sizeof(double *));
-  double **old_centroids =
-      random_centroids(points, num_points, clusters, num_coords);
+  double **centroids = (double **) malloc(num_centroids * sizeof(double *));
+  for (int i = 0; i < num_centroids; ++i)
+    centroids[i] = (double *) malloc(num_coords * sizeof(double));
 
-  int *cluster = (int *)malloc(clusters * sizeof(int));
-  int *cluster_size = (int *)malloc(clusters * sizeof(int));
+  double **old_centroids =
+      random_centroids(points, num_points, num_centroids, num_coords);
+
+  int *cluster = (int *)malloc(num_centroids * sizeof(int));
+  int *cluster_size = (int *)malloc(num_centroids * sizeof(int));
 
   clock_t start = clock();
 
-  kmeans(points, centroids, old_centroids, num_points, num_coords, clusters,
+  kmeans(points, centroids, old_centroids, num_points, num_coords, num_centroids,
          cluster, cluster_size, max_iterations, threshold);
 
-  clock_t duration = (clock() - start) / (double)CLOCKS_PER_SEC;
+  double duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   cout << duration << endl;
 
   // print_point_vector(centroids);
 }
 
-double **random_centroids(double **points, int num_points, int num_clusters,
+double **random_centroids(double **points, int num_points, int num_centroids,
                           int num_coords) {
   srand(time(NULL));
   vector<int> indices_used;
-  double **centroids = (double **)malloc(num_clusters * sizeof(double *));
+  double **centroids = (double **)malloc(num_centroids * sizeof(double *));
 
-  for (int i = 0; i < num_clusters; ++i) {
+  for (int i = 0; i < num_centroids; ++i) {
     int index;
 
     // Generate rand index that hasn't been used
     do {
-      index = ((int)rand()) % num_clusters;
+      index = ((int)rand()) % num_centroids;
     } while (find(begin(indices_used), end(indices_used), index) !=
              end(indices_used));
     indices_used.push_back(index);
@@ -109,7 +112,7 @@ double **random_centroids(double **points, int num_points, int num_clusters,
 
 void print_help() {
   cout << "Format: " << endl
-       << "kmeans -c clusters -t threshold -i iterations -I file"
+       << "kmeans -c num_centroids -t threshold -i iterations -I file"
           "path/to/input"
        << endl;
 }
