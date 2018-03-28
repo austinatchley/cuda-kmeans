@@ -7,6 +7,7 @@
 #include <cuda_runtime_api.h>
 
 void cudaCheckError(const char *msg);
+void flatten_2D_array(double **src, double *dest, int r, int c);
 
 __device__ inline static double
 euclidian_dist_squared(double *points, double *centroids, int num_points,
@@ -34,17 +35,6 @@ __global__ static void find_nearest_cluster(double *dev_points,
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  if (point_id == 0) {
-    for (int i = 0; i < num_centroids; ++i) {
-      for (int j = 0; j < num_coords; ++j) {
-        printf("%d ", dev_centroids[i*num_coords + j]);
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
-
-
 
   if (point_id >= num_points)
     return;
@@ -68,14 +58,6 @@ __global__ static void find_nearest_cluster(double *dev_points,
     }
   }
 
-  if(min_index == 11)
-    printf("point %d closest to c11 (%f,%f,%f) with coord (%f,%f,%f)\n",
-        point_id, dev_centroids[11*num_coords], dev_centroids[11*num_coords + 1], dev_centroids[11*num_coords + 2],
-        dev_points[point_id*num_coords], dev_points[point_id*num_coords + 1],  dev_points[point_id*num_coords + 2]);
-  else
-    printf("point %d closest to c%d (%f,%f,%f) with coord (%f,%f,%f)\n",
-        point_id, min_index, dev_centroids[min_index*num_coords], dev_centroids[min_index*num_coords + 1], dev_centroids[min_index*num_coords + 2],
-        dev_points[point_id*num_coords], dev_points[point_id*num_coords + 1],  dev_points[point_id*num_coords + 2]);
 
   dev_cluster[point_id] = min_index;
 }
@@ -96,6 +78,9 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   double *dev_points;
   double *dev_centroids;
   int *dev_cluster;
+
+  double *flat_points = (double *) malloc(num_points * num_coords * sizeof(double));
+  double *flat_centroids = (double *) malloc(num_centroids * num_coords * sizeof(double));
 
   int iterations = 0;
 
@@ -122,7 +107,9 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
   cudaCheckError("malloc dev_cluster");
 
-  cudaMemcpy(dev_points, points[0], num_points * num_coords * sizeof(double),
+  flatten_2D_array(points, flat_points, num_points, num_coords);
+
+  cudaMemcpy(dev_points, flat_points, num_points * num_coords * sizeof(double),
              cudaMemcpyHostToDevice);
   cudaCheckError("copy points to device");
 
@@ -131,7 +118,7 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   cudaCheckError("copy cluster to device");
 
   do {
-    // prints every iteration of centroids
+    /*// prints every iteration of centroids
     for (int i = 0; i < num_centroids; ++i) {
       for (int j = 0; j < num_coords; ++j) {
         cout << centroids[i][j] << " ";
@@ -139,8 +126,10 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
       cout << endl;
     }
     cout << endl;
+    */
 
-   cudaMemcpy(dev_centroids, centroids[0],
+    flatten_2D_array(centroids, flat_centroids, num_centroids, num_coords);
+    cudaMemcpy(dev_centroids, flat_centroids,
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
 
@@ -174,10 +163,8 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
       for (int j = 0; j < num_coords; ++j) {
         if (cluster_size[i] > 0) {
           centroids[i][j] /= cluster_size[i];
-        } else {
+        } else
           assert(0);
-          //centroids[i][j] = old_centroids[i][j];
-        }
       }
       cluster_size[i] = 0;
     }
@@ -187,11 +174,9 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
     //  (centroids, old_centroids, num_centroids, num_coords);
     // cudaDeviceSynchronize();
 
-    for (int i = 0; i < num_centroids; ++i) {
-      for (int j = 0; j < num_coords; ++j) {
+    for (int i = 0; i < num_centroids; ++i)
+      for (int j = 0; j < num_coords; ++j)
         old_centroids[i][j] = centroids[i][j];
-      }
-    }
 
     ++iterations;
   } while (iterations < max_iterations);
@@ -210,4 +195,10 @@ void cudaCheckError(const char *msg) {
     fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString(err));
     exit(EXIT_FAILURE);
   }
+}
+
+void flatten_2D_array(double **src, double *dest, int r, int c) {
+  for (int i = 0; i < r; ++i)
+    for (int j = 0; j < c; ++j)
+      dest[i*c + j] = src[i][j];
 }
