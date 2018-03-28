@@ -6,6 +6,12 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
+/*
+ * Global
+ */
+
+__device__ bool converged = false;
+
 void cudaCheckError(const char *msg);
 void flatten_2D_array(double **src, double *dest, int r, int c);
 
@@ -60,13 +66,37 @@ __global__ static void find_nearest_cluster(double *dev_points,
   dev_cluster[point_id] = min_index;
 }
 
-__global__ static void compute_change(double **centroids,
-                                      double **old_centroids, int num_centroids,
-                                      int num_coords) {
-  // extern __shared__ char shared[]; // array of bytes of shared memory
+__global__ static void compute_converged(double *centroids,
+                                      double *old_centroids, int num_centroids,
+                                      int num_coords, int shared_length) {
+  extern __shared__ bool shared[]; // array of bools in shared memory
 
-  int point_id = blockDim.x * blockIdx.x + threadIdx.x;
-  printf("%d\n", point_id);
+
+  int centroid_id = blockDim.x * blockIdx.x + threadIdx.x;
+  if (centroid_id >= num_centroids)
+    return;
+
+  shared[centroid_id] = true;
+  for (int i = 0; i < num_coords; ++i) {
+    if (fabs(centroids[centroid_id*num_coords + i] - old_centroids[centroid_id*num_coords + i])) {
+        shared[centroid_id] = false;
+    }
+  }
+
+  __syncthreads();
+
+  for (int s = shared_length / 2; s > 0; s >>= 1) {
+    if (centroid_id < s) {
+      shared[centroid_id] &= shared[centroid_id + s];
+      //printf("reducing %d + %d to %d\n", centroid_id, s, shared[centroid_id]);
+    }
+    __syncthreads();
+  }
+
+  if (centroid_id == 0) {
+    converged = shared[0];
+    //printf("converged is %d\n", shared[0]);
+  }
 }
 
 double **kmeans(double **const points, double **centroids,
@@ -76,11 +106,14 @@ double **kmeans(double **const points, double **centroids,
 
   double *dev_points;
   double *dev_centroids;
+  double *dev_old_centroids;
   int *dev_cluster;
 
   double *flat_points =
       (double *)malloc(num_points * num_coords * sizeof(double));
   double *flat_centroids =
+      (double *)malloc(num_centroids * num_coords * sizeof(double));
+  double *flat_old_centroids =
       (double *)malloc(num_centroids * num_coords * sizeof(double));
 
   int iterations = 0;
@@ -96,6 +129,9 @@ double **kmeans(double **const points, double **centroids,
       (num_points + threads_per_block - 1) / threads_per_block;
   const size_t shared_mem_per_block = threads_per_block * sizeof(char);
 
+  const size_t reduction_threads = powf(2, ceil(log(num_centroids)/log(2)));
+  const size_t shared_mem_comparison = reduction_threads * sizeof(bool);
+
   cudaSetDevice(0);
 
   cudaMalloc((void **)&dev_points, num_points * num_coords * sizeof(double));
@@ -104,6 +140,10 @@ double **kmeans(double **const points, double **centroids,
   cudaMalloc((void **)&dev_centroids,
              num_centroids * num_coords * sizeof(double));
   cudaCheckError("malloc dev_centroids");
+  
+  cudaMalloc((void **)&dev_old_centroids,
+             num_centroids * num_coords * sizeof(double));
+  cudaCheckError("malloc dev_old_centroids");
 
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
   cudaCheckError("malloc dev_cluster");
@@ -118,6 +158,9 @@ double **kmeans(double **const points, double **centroids,
              cudaMemcpyHostToDevice);
   cudaCheckError("copy cluster to device");
 
+  flatten_2D_array(centroids, flat_centroids, num_centroids, num_coords);
+  flatten_2D_array(old_centroids, flat_old_centroids, num_centroids, num_coords);
+
   do {
     /*// prints every iteration of centroids
     for (int i = 0; i < num_centroids; ++i) {
@@ -129,10 +172,10 @@ double **kmeans(double **const points, double **centroids,
     cout << endl;
     */
 
-    flatten_2D_array(centroids, flat_centroids, num_centroids, num_coords);
     cudaMemcpy(dev_centroids, flat_centroids,
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
+    cudaCheckError("copy flat_centroids into dev_centroids");
 
     find_nearest_cluster<<<num_blocks, threads_per_block,
                            shared_mem_per_block>>>(dev_points, dev_centroids,
@@ -170,14 +213,32 @@ double **kmeans(double **const points, double **centroids,
       cluster_size[i] = 0;
     }
 
-    // compute_change
-    //  <<<1, reduction_threads, shared_mem_for_reduction>>>
-    //  (centroids, old_centroids, num_centroids, num_coords);
-    // cudaDeviceSynchronize();
+    flatten_2D_array(centroids, flat_centroids, num_centroids, num_coords);
+    cudaMemcpy(dev_centroids, flat_centroids,
+               num_centroids * num_coords * sizeof(double),
+               cudaMemcpyHostToDevice);
+    cudaCheckError("copy flat_centroids into dev_centroids");
 
-    for (int i = 0; i < num_centroids; ++i)
-      for (int j = 0; j < num_coords; ++j)
+    cudaMemcpy(dev_old_centroids, flat_old_centroids,
+               num_centroids * num_coords * sizeof(double),
+               cudaMemcpyHostToDevice);
+    cudaCheckError("copy flat_old_centroids into dev_old_centroids");
+
+    compute_converged<<<1, reduction_threads, shared_mem_comparison>>>(dev_centroids, dev_old_centroids, num_centroids, num_coords, shared_mem_comparison);
+    cudaDeviceSynchronize();
+
+    bool break_flag = false;
+    cudaMemcpyFromSymbol(&break_flag, converged, sizeof(bool), 0, cudaMemcpyDeviceToHost);
+    if (break_flag)
+      break;
+    
+
+    for (int i = 0; i < num_centroids; ++i) {
+      for (int j = 0; j < num_coords; ++j) {
         old_centroids[i][j] = centroids[i][j];
+        flat_old_centroids[i*num_coords + j] = flat_centroids[i*num_coords + j];
+      }
+    }
 
     ++iterations;
   } while (iterations < max_iterations);
