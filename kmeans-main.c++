@@ -66,11 +66,11 @@ int main(int argc, char *argv[]) {
 
   cout << num_points << endl;
 
-  double **centroids = (double **)malloc(num_centroids * sizeof(double *));
+  double **old_centroids = (double **)malloc(num_centroids * sizeof(double *));
   for (int i = 0; i < num_centroids; ++i)
-    centroids[i] = (double *)malloc(num_coords * sizeof(double));
+    old_centroids[i] = (double *)malloc(num_coords * sizeof(double));
 
-  double **old_centroids =
+  double **centroids =
       random_centroids(points, num_points, num_centroids, num_coords);
 
   int *cluster = (int *)malloc(num_centroids * sizeof(int));
@@ -90,23 +90,24 @@ int main(int argc, char *argv[]) {
 
 double **random_centroids(double **points, int num_points, int num_centroids,
                           int num_coords) {
-  srand(time(NULL));
   vector<int> indices_used;
   double **centroids = (double **)malloc(num_centroids * sizeof(double *));
+  srand(time(NULL));
 
   for (int i = 0; i < num_centroids; ++i) {
+    centroids[i] = (double *)malloc(num_coords * sizeof(double));
     int index;
 
     // Generate rand index that hasn't been used
     do {
-      index = ((int)rand()) % num_centroids;
+      index = ((int)rand()) % num_points;
     } while (find(begin(indices_used), end(indices_used), index) !=
              end(indices_used));
     indices_used.push_back(index);
 
-    centroids[index] = (double *)malloc(num_coords * sizeof(double));
-    copy(points[index], points[index] + num_coords, centroids[index]);
+    copy(&points[index][0], &points[index][num_coords], centroids[i]);
   }
+
   return centroids;
 }
 
@@ -174,7 +175,7 @@ double **read_file(vector<Point> &ds, string file_path, int *num_points,
   for (int i = 0; i < points_vec.size(); ++i) {
     points[i] = (double *)malloc(*num_coords * sizeof(double));
     for (int j = 0; j < *num_coords; ++j)
-      points[i][j] = points_vec[0][j];
+      points[i][j] = points_vec[i][j];
   }
   return points;
 }

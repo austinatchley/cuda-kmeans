@@ -108,6 +108,13 @@ void kmeans(double **points, double **centroids, double **old_centroids,
   cudaCheckError("copy cluster to device");
 
   do {
+    for (int i = 0; i < num_centroids; ++i) {
+      for (int j = 0; j < num_coords; ++j) {
+        cout << centroids[i][j] << " ";
+      }
+      cout << endl;
+    }
+
     cudaMemcpy(dev_centroids, centroids[0],
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
