@@ -31,18 +31,17 @@ __global__ static void find_nearest_cluster(double *dev_points,
                                             double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
-  //extern __shared__ char shared[]; // array of bytes of shared memory
+  // extern __shared__ char shared[]; // array of bytes of shared memory
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
-
 
   if (point_id >= num_points)
     return;
 
   // start with the dist between the point and the first centroid
   double min_dist =
-      euclidian_dist_squared(dev_points, dev_centroids, num_points, num_centroids,
-                             num_coords, point_id, 0);
+      euclidian_dist_squared(dev_points, dev_centroids, num_points,
+                             num_centroids, num_coords, point_id, 0);
   int min_index = 0;
 
   double dist;
@@ -58,36 +57,38 @@ __global__ static void find_nearest_cluster(double *dev_points,
     }
   }
 
-
   dev_cluster[point_id] = min_index;
 }
 
 __global__ static void compute_change(double **centroids,
                                       double **old_centroids, int num_centroids,
                                       int num_coords) {
-  //extern __shared__ char shared[]; // array of bytes of shared memory
+  // extern __shared__ char shared[]; // array of bytes of shared memory
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
   printf("%d\n", point_id);
 }
 
-double **kmeans(double ** const points, double **centroids, double **old_centroids,
-            int num_points, int num_coords, int num_centroids, int * const cluster,
-            int *cluster_size, int *num_iterations, int max_iterations, double threshold) {
+double **kmeans(double **const points, double **centroids,
+                double **old_centroids, int num_points, int num_coords,
+                int num_centroids, int *const cluster, int *cluster_size,
+                int *num_iterations, int max_iterations, double threshold) {
 
   double *dev_points;
   double *dev_centroids;
   int *dev_cluster;
 
-  double *flat_points = (double *) malloc(num_points * num_coords * sizeof(double));
-  double *flat_centroids = (double *) malloc(num_centroids * num_coords * sizeof(double));
+  double *flat_points =
+      (double *)malloc(num_points * num_coords * sizeof(double));
+  double *flat_centroids =
+      (double *)malloc(num_centroids * num_coords * sizeof(double));
 
   int iterations = 0;
 
   for (int i = 0; i < num_points; ++i)
     cluster[i] = -1; // init cluster membership to default val
 
-  for (int i = 0; i < num_centroids; ++i) 
+  for (int i = 0; i < num_centroids; ++i)
     cluster_size[i] = 0;
 
   const size_t threads_per_block = 128; // This is simply a design decision
@@ -103,7 +104,7 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   cudaMalloc((void **)&dev_centroids,
              num_centroids * num_coords * sizeof(double));
   cudaCheckError("malloc dev_centroids");
-  
+
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
   cudaCheckError("malloc dev_cluster");
 
@@ -180,7 +181,7 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
 
     ++iterations;
   } while (iterations < max_iterations);
-  
+
   cudaFree(dev_points);
   cudaFree(dev_centroids);
   cudaFree(dev_cluster);
@@ -200,5 +201,5 @@ void cudaCheckError(const char *msg) {
 void flatten_2D_array(double **src, double *dest, int r, int c) {
   for (int i = 0; i < r; ++i)
     for (int j = 0; j < c; ++j)
-      dest[i*c + j] = src[i][j];
+      dest[i * c + j] = src[i][j];
 }
