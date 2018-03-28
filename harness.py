@@ -4,25 +4,24 @@ import sys
 import csv
 import subprocess
 import numpy as np
+
+import matplotlib as mpl
+mpl.use('Agg')
+
 import matplotlib.pyplot as plt
 
 from io import StringIO
 
-if len(sys.argv) < 6:
+if len(sys.argv) < 4:
     print(
-        "./harness [version] -c [clusters] -t [threshold] -i [iterations] -I [path/to/file]"
+        "./harness -c [clusters] -t [threshold] -i [iterations] -I [path/to/file]"
     )
     sys.exit(0)
 
-if sys.argv[1] != '1':
-    version = '-' + sys.argv[1]
-else:
-    version = ''
-
-args = "./kmeans" + version  + ".out -c " + sys.argv[2] +    \
-    "  -t " + sys.argv[3] +                 \
-    " -i " + sys.argv[4]  +                 \
-    " -I " + sys.argv[5]
+args = "./kmeans.out -c " + sys.argv[1] +    \
+    "  -t " + sys.argv[2] +                 \
+    " -i " + sys.argv[3]  +                 \
+    " -I " + sys.argv[4]
 
 output = subprocess.check_output(args.split())
 result = output.decode('utf-8')
@@ -66,4 +65,5 @@ colors = np.random.rand(len(points_x_float))
 
 plt.scatter(points_x_float, points_y_float, s=10, c=points_color, alpha=0.5)
 plt.scatter(cent_x_float, cent_y_float, s=10, c=cent_color, alpha=1)
-plt.show()
+#plt.show()
+plt.savefig("scatter.pdf", bbox_inches='tight', format='pdf')
