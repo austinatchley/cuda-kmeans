@@ -67,12 +67,15 @@ int main(int argc, char *argv[]) {
 
   cout << num_points << endl;
 
-  double **old_centroids = (double **)malloc(num_centroids * sizeof(double *));
-  for (int i = 0; i < num_centroids; ++i)
-    old_centroids[i] = (double *)malloc(num_coords * sizeof(double));
-
   double **centroids =
       random_centroids(points, num_points, num_centroids, num_coords);
+
+  double **old_centroids = (double **)malloc(num_centroids * sizeof(double *));
+  for (int i = 0; i < num_centroids; ++i) {
+    old_centroids[i] = (double *)malloc(num_coords * sizeof(double));
+    for (int j = 0; j < num_coords; ++j)
+      old_centroids[i][j] = centroids[i][j];
+  }
 
   int *cluster = (int *)malloc(num_points * sizeof(int));
   int *cluster_size = (int *)malloc(num_centroids * sizeof(int));

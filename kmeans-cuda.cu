@@ -8,7 +8,7 @@
 
 void cudaCheckError(const char *msg);
 
-__device__ static double
+__device__ inline static double
 euclidian_dist_squared(double *points, double *centroids, int num_points,
                        int num_centroids, int num_coords, int point_id,
                        int centroid_id) {
@@ -30,9 +30,21 @@ __global__ static void find_nearest_cluster(double *dev_points,
                                             double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
-  extern __shared__ char shared[]; // array of bytes of shared memory
+  //extern __shared__ char shared[]; // array of bytes of shared memory
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
+
+  if (point_id == 0) {
+    for (int i = 0; i < num_centroids; ++i) {
+      for (int j = 0; j < num_coords; ++j) {
+        printf("%d ", dev_centroids[i*num_coords + j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+
+
 
   if (point_id >= num_points)
     return;
@@ -56,13 +68,22 @@ __global__ static void find_nearest_cluster(double *dev_points,
     }
   }
 
+  if(min_index == 11)
+    printf("point %d closest to c11 (%f,%f,%f) with coord (%f,%f,%f)\n",
+        point_id, dev_centroids[11*num_coords], dev_centroids[11*num_coords + 1], dev_centroids[11*num_coords + 2],
+        dev_points[point_id*num_coords], dev_points[point_id*num_coords + 1],  dev_points[point_id*num_coords + 2]);
+  else
+    printf("point %d closest to c%d (%f,%f,%f) with coord (%f,%f,%f)\n",
+        point_id, min_index, dev_centroids[min_index*num_coords], dev_centroids[min_index*num_coords + 1], dev_centroids[min_index*num_coords + 2],
+        dev_points[point_id*num_coords], dev_points[point_id*num_coords + 1],  dev_points[point_id*num_coords + 2]);
+
   dev_cluster[point_id] = min_index;
 }
 
 __global__ static void compute_change(double **centroids,
                                       double **old_centroids, int num_centroids,
                                       int num_coords) {
-  extern __shared__ char shared[]; // array of bytes of shared memory
+  //extern __shared__ char shared[]; // array of bytes of shared memory
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
   printf("%d\n", point_id);
@@ -97,9 +118,7 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   cudaMalloc((void **)&dev_centroids,
              num_centroids * num_coords * sizeof(double));
   cudaCheckError("malloc dev_centroids");
-
   
-
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
   cudaCheckError("malloc dev_cluster");
 
@@ -112,7 +131,7 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
   cudaCheckError("copy cluster to device");
 
   do {
-    /* prints every iteration of centroids
+    // prints every iteration of centroids
     for (int i = 0; i < num_centroids; ++i) {
       for (int j = 0; j < num_coords; ++j) {
         cout << centroids[i][j] << " ";
@@ -120,8 +139,6 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
       cout << endl;
     }
     cout << endl;
-    */
-
 
    cudaMemcpy(dev_centroids, centroids[0],
                num_centroids * num_coords * sizeof(double),
@@ -136,7 +153,11 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
 
     cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int),
                cudaMemcpyDeviceToHost);
-    cudaCheckError("copy cluster memberships back to host");
+    cudaCheckError("copy point->cluster map back to host");
+
+    for (int i = 0; i < num_centroids; ++i)
+      for (int j = 0; j < num_coords; ++j)
+        centroids[i][j] = 0;
 
     for (int i = 0; i < num_points; ++i) {
       int cluster_idx = cluster[i];
@@ -150,9 +171,12 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
     }
 
     for (int i = 0; i < num_centroids; ++i) {
-      if (cluster_size[i] > 0) {
-        for (int j = 0; j < num_coords; ++j) {
+      for (int j = 0; j < num_coords; ++j) {
+        if (cluster_size[i] > 0) {
           centroids[i][j] /= cluster_size[i];
+        } else {
+          assert(0);
+          //centroids[i][j] = old_centroids[i][j];
         }
       }
       cluster_size[i] = 0;
@@ -171,6 +195,11 @@ double **kmeans(double ** const points, double **centroids, double **old_centroi
 
     ++iterations;
   } while (iterations < max_iterations);
+  
+  cudaFree(dev_points);
+  cudaFree(dev_centroids);
+  cudaFree(dev_cluster);
+
   *num_iterations = iterations;
   return centroids;
 }
