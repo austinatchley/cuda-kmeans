@@ -67,8 +67,8 @@ __global__ static void compute_change(double **centroids,
   printf("%d\n", point_id);
 }
 
-void kmeans(double **points, double **centroids, double **old_centroids,
-            int num_points, int num_coords, int num_centroids, int *cluster,
+void kmeans(double ** const points, double **centroids, double **old_centroids,
+            int num_points, int num_coords, int num_centroids, int * const cluster,
             int *cluster_size, int max_iterations, double threshold) {
 
   double *dev_points;
@@ -96,6 +96,8 @@ void kmeans(double **points, double **centroids, double **old_centroids,
              num_centroids * num_coords * sizeof(double));
   cudaCheckError("malloc dev_centroids");
 
+  
+
   cudaMalloc((void **)&dev_cluster, num_points * sizeof(int));
   cudaCheckError("malloc dev_cluster");
 
@@ -115,7 +117,8 @@ void kmeans(double **points, double **centroids, double **old_centroids,
       cout << endl;
     }
 
-    cudaMemcpy(dev_centroids, centroids[0],
+
+   cudaMemcpy(dev_centroids, centroids[0],
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
 

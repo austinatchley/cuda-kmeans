@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
   double **centroids =
       random_centroids(points, num_points, num_centroids, num_coords);
 
-  int *cluster = (int *)malloc(num_centroids * sizeof(int));
+  int *cluster = (int *)malloc(num_points * sizeof(int));
   int *cluster_size = (int *)malloc(num_centroids * sizeof(int));
 
   clock_t start = clock();
