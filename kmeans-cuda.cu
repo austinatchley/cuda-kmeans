@@ -8,9 +8,9 @@
 
 void cudaCheckError(const char *msg);
 
-__global__ static void find_nearest_cluster(double **points, double **centroids, int *cluster,
-                                            int num_points, int num_coords,
-                                            int num_centroids) {
+__global__ static void find_nearest_cluster(double **points, double **centroids,
+                                            int *cluster, int num_points,
+                                            int num_coords, int num_centroids) {
   extern __shared__ char shared[]; // array of bytes of shared memory
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
@@ -72,8 +72,9 @@ void kmeans(double **points, double **centroids, double **old_centroids,
                cudaMemcpyHostToDevice);
 
     find_nearest_cluster<<<num_blocks, threads_per_block,
-                           shared_mem_per_block>>>(
-        dev_points, dev_centroids, dev_cluster, num_points, num_coords, num_centroids);
+                           shared_mem_per_block>>>(dev_points, dev_centroids,
+                                                   dev_cluster, num_points,
+                                                   num_coords, num_centroids);
 
     cudaDeviceSynchronize();
 
