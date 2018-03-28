@@ -18,6 +18,7 @@
 double **random_centroids(double **points, int num_points, int num_centroids,
                           int num_coords);
 void print_point_vector(const vector<Point> &points);
+void print_point_array(double **const points, const int num_points, const int num_coords);
 void print_help();
 
 int main(int argc, char *argv[]) {
@@ -76,14 +77,20 @@ int main(int argc, char *argv[]) {
   int *cluster = (int *)malloc(num_points * sizeof(int));
   int *cluster_size = (int *)malloc(num_centroids * sizeof(int));
 
+  int *iterations = (int *) malloc(sizeof(int));
+
   clock_t start = clock();
 
-  kmeans(points, centroids, old_centroids, num_points, num_coords,
-         num_centroids, cluster, cluster_size, max_iterations, threshold);
+  double **final_centroids = kmeans(points, centroids, old_centroids, num_points, num_coords,
+         num_centroids, cluster, cluster_size, iterations, max_iterations, threshold);
 
   double duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 
+  cout << *iterations << endl;
   cout << duration << endl;
+
+  print_point_array(points, num_points, num_coords);
+  print_point_array(final_centroids, num_centroids, num_coords);
 
   // print_point_vector(centroids);
 }
@@ -116,6 +123,16 @@ void print_help() {
        << "kmeans -c num_centroids -t threshold -i iterations -I file"
           "path/to/input"
        << endl;
+}
+
+void print_point_array(double **const points, const int num_points, const int num_coords) {
+  for (int i = 0; i < num_points; ++i) {
+    for (int j = 0; j < num_coords - 1; ++j) {
+      double val = points[i][j];
+      cout << val << ", ";
+    }
+    cout << points[i][num_coords - 1] << endl;
+  }
 }
 
 void print_point_vector(const vector<Point> &points) {

@@ -12,12 +12,15 @@ __device__ static double
 euclidian_dist_squared(double *points, double *centroids, int num_points,
                        int num_centroids, int num_coords, int point_id,
                        int centroid_id) {
+  assert(point_id < num_points);
+  assert(centroid_id < num_centroids);
+
   int i = 0;
   double dist = 0.0;
 
   for (; i < num_coords; ++i)
-    dist += powf(points[point_id * num_points + i] -
-                     centroids[centroid_id * num_centroids + i],
+    dist += powf(points[point_id * num_coords + i] -
+                     centroids[centroid_id * num_coords + i],
                  2);
 
   return dist;
@@ -31,14 +34,12 @@ __global__ static void find_nearest_cluster(double *dev_points,
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
 
-  double *centroids = dev_centroids;
-
   if (point_id >= num_points)
     return;
 
   // start with the dist between the point and the first centroid
   double min_dist =
-      euclidian_dist_squared(dev_points, centroids, num_points, num_centroids,
+      euclidian_dist_squared(dev_points, dev_centroids, num_points, num_centroids,
                              num_coords, point_id, 0);
   int min_index = 0;
 
@@ -46,7 +47,7 @@ __global__ static void find_nearest_cluster(double *dev_points,
 
   // start at 1 because we already calculated the 0th index
   for (int i = 1; i < num_centroids; ++i) {
-    dist = euclidian_dist_squared(dev_points, centroids, num_points,
+    dist = euclidian_dist_squared(dev_points, dev_centroids, num_points,
                                   num_centroids, num_coords, point_id, i);
 
     if (dist < min_dist) {
@@ -67,9 +68,9 @@ __global__ static void compute_change(double **centroids,
   printf("%d\n", point_id);
 }
 
-void kmeans(double ** const points, double **centroids, double **old_centroids,
+double **kmeans(double ** const points, double **centroids, double **old_centroids,
             int num_points, int num_coords, int num_centroids, int * const cluster,
-            int *cluster_size, int max_iterations, double threshold) {
+            int *cluster_size, int *num_iterations, int max_iterations, double threshold) {
 
   double *dev_points;
   double *dev_centroids;
@@ -80,12 +81,13 @@ void kmeans(double ** const points, double **centroids, double **old_centroids,
   for (int i = 0; i < num_points; ++i)
     cluster[i] = -1; // init cluster membership to default val
 
+  for (int i = 0; i < num_centroids; ++i) 
+    cluster_size[i] = 0;
+
   const size_t threads_per_block = 128; // This is simply a design decision
   const size_t num_blocks =
       (num_points + threads_per_block - 1) / threads_per_block;
   const size_t shared_mem_per_block = threads_per_block * sizeof(char);
-
-  cout << "kmeans" << endl;
 
   cudaSetDevice(0);
 
@@ -110,12 +112,15 @@ void kmeans(double ** const points, double **centroids, double **old_centroids,
   cudaCheckError("copy cluster to device");
 
   do {
+    /* prints every iteration of centroids
     for (int i = 0; i < num_centroids; ++i) {
       for (int j = 0; j < num_coords; ++j) {
         cout << centroids[i][j] << " ";
       }
       cout << endl;
     }
+    cout << endl;
+    */
 
 
    cudaMemcpy(dev_centroids, centroids[0],
@@ -135,20 +140,22 @@ void kmeans(double ** const points, double **centroids, double **old_centroids,
 
     for (int i = 0; i < num_points; ++i) {
       int cluster_idx = cluster[i];
-      assert(cluster_idx >= 0);
+      assert(cluster_idx >= 0 && cluster_idx < num_centroids);
 
       // increment cluster_size
       ++cluster_size[cluster_idx];
+      assert(cluster_size[cluster_idx] < num_points);
       for (int j = 0; j < num_coords; ++j)
         centroids[cluster_idx][j] += points[i][j];
     }
 
     for (int i = 0; i < num_centroids; ++i) {
-      for (int j = 0; j < num_coords; ++j) {
-        if (cluster_size[i] > 0) {
+      if (cluster_size[i] > 0) {
+        for (int j = 0; j < num_coords; ++j) {
           centroids[i][j] /= cluster_size[i];
         }
       }
+      cluster_size[i] = 0;
     }
 
     // compute_change
@@ -164,7 +171,8 @@ void kmeans(double ** const points, double **centroids, double **old_centroids,
 
     ++iterations;
   } while (iterations < max_iterations);
-  cout << "finished" << endl;
+  *num_iterations = iterations;
+  return centroids;
 }
 
 void cudaCheckError(const char *msg) {

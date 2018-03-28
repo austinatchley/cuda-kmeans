@@ -10,7 +10,7 @@ from io import StringIO
 
 if len(sys.argv) < 6:
     print(
-        "./harness [version] -c [clusters] -t [threshold] -i [iterations] -w [workers] -I [path/to/file]"
+        "./harness [version] -c [clusters] -t [threshold] -i [iterations] -I [path/to/file]"
     )
     sys.exit(0)
 
@@ -22,8 +22,7 @@ else:
 args = "./kmeans" + version  + ".out -c " + sys.argv[2] +    \
     "  -t " + sys.argv[3] +                 \
     " -i " + sys.argv[4]  +                 \
-    " -w " + sys.argv[5]  +                 \
-    " -I " + sys.argv[6]
+    " -I " + sys.argv[5]
 
 output = subprocess.check_output(args.split())
 result = output.decode('utf-8')
