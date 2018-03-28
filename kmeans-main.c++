@@ -66,9 +66,9 @@ int main(int argc, char *argv[]) {
 
   cout << num_points << endl;
 
-  double **centroids = (double **) malloc(num_centroids * sizeof(double *));
+  double **centroids = (double **)malloc(num_centroids * sizeof(double *));
   for (int i = 0; i < num_centroids; ++i)
-    centroids[i] = (double *) malloc(num_coords * sizeof(double));
+    centroids[i] = (double *)malloc(num_coords * sizeof(double));
 
   double **old_centroids =
       random_centroids(points, num_points, num_centroids, num_coords);
@@ -78,8 +78,8 @@ int main(int argc, char *argv[]) {
 
   clock_t start = clock();
 
-  kmeans(points, centroids, old_centroids, num_points, num_coords, num_centroids,
-         cluster, cluster_size, max_iterations, threshold);
+  kmeans(points, centroids, old_centroids, num_points, num_coords,
+         num_centroids, cluster, cluster_size, max_iterations, threshold);
 
   double duration = (clock() - start) / (double)CLOCKS_PER_SEC;
 

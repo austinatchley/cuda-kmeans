@@ -8,17 +8,23 @@
 
 void cudaCheckError(const char *msg);
 
-__device__ static double euclidian_dist_squared(double *points, double *centroids, int num_points, int num_centroids, int num_coords, int point_id, int centroid_id){
+__device__ static double
+euclidian_dist_squared(double *points, double *centroids, int num_points,
+                       int num_centroids, int num_coords, int point_id,
+                       int centroid_id) {
   int i = 0;
   double dist = 0.0;
 
-  for(; i < num_coords; ++i)
-    dist += powf(points[point_id * num_points + i] - centroids[centroid_id * num_centroids + i] ,2);
+  for (; i < num_coords; ++i)
+    dist += powf(points[point_id * num_points + i] -
+                     centroids[centroid_id * num_centroids + i],
+                 2);
 
   return dist;
 }
 
-__global__ static void find_nearest_cluster(double *dev_points, double *dev_centroids,
+__global__ static void find_nearest_cluster(double *dev_points,
+                                            double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
   extern __shared__ char shared[]; // array of bytes of shared memory
@@ -31,15 +37,18 @@ __global__ static void find_nearest_cluster(double *dev_points, double *dev_cent
     return;
 
   // start with the dist between the point and the first centroid
-  double min_dist = euclidian_dist_squared(dev_points, centroids, num_points, num_centroids, num_coords, point_id, 0);
+  double min_dist =
+      euclidian_dist_squared(dev_points, centroids, num_points, num_centroids,
+                             num_coords, point_id, 0);
   int min_index = 0;
 
   double dist;
 
   // start at 1 because we already calculated the 0th index
   for (int i = 1; i < num_centroids; ++i) {
-    dist = euclidian_dist_squared(dev_points, centroids, num_points, num_centroids, num_coords, point_id, i);
-    
+    dist = euclidian_dist_squared(dev_points, centroids, num_points,
+                                  num_centroids, num_coords, point_id, i);
+
     if (dist < min_dist) {
       min_index = i;
       min_dist = dist;
@@ -145,7 +154,7 @@ void kmeans(double **points, double **centroids, double **old_centroids,
 
     ++iterations;
   } while (iterations < max_iterations);
-    cout << "finished" << endl;
+  cout << "finished" << endl;
 }
 
 void cudaCheckError(const char *msg) {
