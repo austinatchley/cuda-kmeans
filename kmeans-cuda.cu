@@ -53,8 +53,6 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
     return;
 
 #ifdef SHARED_MEM
-  stride = blockDim.x;
-
   // before adding to shared_centroids, clear it
   if (threadIdx.x == 0)
     for (int i = 0; i < num_centroids; ++i)
@@ -73,9 +71,8 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
   __syncthreads();
 
   // add each thread block's centroids from shared memory
-  for (int i = point_id; i < num_centroids; i+=stride) {
-    for (int j = 0; j < num_coords; ++j) {
-      atomicAdd(dev_centroids + i*num_coords + j, shared_centroids[i*num_coords + j]);
+  for (int i = threadIdx.x; i < num_centroids*num_coords; i+=blockDim.x) {
+      atomicAdd(dev_centroids + i, shared_centroids[i]);
     }
   }
 
@@ -185,7 +182,7 @@ double **kmeans(double **const points, double **centroids,
   for (int i = 0; i < num_centroids; ++i)
     cluster_size[i] = 0;
 
-  const size_t threads_per_block = 256; // This is simply a design decision
+  const size_t threads_per_block = 32; // This is simply a design decision
   const size_t num_blocks =
       (num_points + threads_per_block - 1) / threads_per_block;
   const size_t shared_mem_per_block = num_centroids * num_coords * sizeof(double);
@@ -250,22 +247,10 @@ double **kmeans(double **const points, double **centroids,
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
     cudaCheckError("copy flat_old_centroids into dev_old_centroids");
-    /*cudaMemcpy(dev_centroids, flat_centroids,
-               num_centroids * num_coords * sizeof(double),
-               cudaMemcpyHostToDevice);
-    cudaCheckError("copy flat_centroids into dev_centroids");
-    */
+
     cudaMemset(dev_centroids, 0, num_centroids * num_coords * sizeof(double));
     cudaCheckError("memset centroids");
 
-
-    // for each point in dev_points, finds the nearest centroid from 
-    // dev_centroids, and stores the index in dev_cluster
-    /*assign_and_accum_centroids<<<num_blocks, threads_per_block,
-                           shared_mem_per_block>>>(dev_points, dev_centroids, dev_old_centroids,
-                                                   dev_cluster, num_points,
-                                                   num_coords, num_centroids);
-                                                   */
 
     find_nearest_cluster<<<num_blocks,threads_per_block,shared_mem_per_block>>>(dev_points, dev_old_centroids, dev_cluster, num_points, num_coords, num_centroids);
 
