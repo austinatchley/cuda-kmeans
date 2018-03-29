@@ -47,7 +47,7 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
   extern __shared__ double shared_centroids[];
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
+  int stride = blockDim.x;
 
   if (point_id >= num_points && point_id >= num_centroids)
     return;
@@ -211,12 +211,16 @@ double **kmeans(double **const points, double **centroids,
   const size_t reduction_threads = powf(2, ceil(log(num_centroids)/log(2)));
   const size_t shared_mem_comparison = reduction_threads * sizeof(bool);
 
-  cudaSetDevice(0);
-  //cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+  cudaDeviceProp prop;
+  int device_num;
+  cudaGetDevice(&device_num);
+  cudaGetDeviceProperties(&prop, device_num);
+
+  if (shared_mem_per_block > prop.sharedMemPerBlock) {
+      fprintf(stderr, "WARNING: Your CUDA hardware has insufficient block shared memory. You need to recompile without SHARED_MEM defined.\n");
+  }
 
 #ifdef DEBUG
-  cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
 	printf("Device Number: %d\n", 0);
   printf("  Device name: %s\n", prop.name);
   printf("  Memory Clock Rate (KHz): %d\n",
