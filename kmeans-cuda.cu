@@ -18,6 +18,11 @@ __device__ bool converged = false;
 
 void cudaCheckError(const char *msg);
 void flatten_2D_array(double **src, double *dest, int r, int c);
+void unflatten_1D_array(double *src, double **dest, int r, int c);
+
+/*
+ * CUDA Kernels
+ */
 
 __device__ inline static double
 euclidian_dist_squared(double *points, double *centroids, int num_points,
@@ -26,23 +31,38 @@ euclidian_dist_squared(double *points, double *centroids, int num_points,
   assert(point_id < num_points);
   assert(centroid_id < num_centroids);
 
-  int i = 0;
   double dist = 0.0;
 
-  for (; i < num_coords; ++i)
-    dist += powf(points[point_id * num_coords + i] -
-                     centroids[centroid_id * num_coords + i],
-                 2);
+  for (int i = 0; i < num_coords; ++i) {
+    double x = points[point_id * num_coords + i] - centroids[centroid_id * num_coords + i];
+    dist += x * x;
+  }
 
   return dist;
 }
 
-__global__ static void find_nearest_cluster(double *dev_points,
+__device__ static void accum_centroids(double *dev_points, double *dev_centroids, int *dev_cluster, int num_points, int num_coords, int num_centroids) {
+  
+  int point_id = blockDim.x * blockIdx.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+
+  if (point_id >= num_points)
+    return;
+
+  for (int i = point_id; i < num_points; i+=stride) {
+    int centr_idx = dev_cluster[i];
+    for (int j = 0; j < num_coords; ++j) {
+      atomicAdd(&dev_centroids[centr_idx*num_coords + j], dev_points[i*num_coords + j]);
+    }
+  }
+}
+
+__device__ static void find_nearest_cluster(double *dev_points,
                                             double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
   // shared with thread block
-  extern __shared__ char shared_accum[];
+  extern __shared__ double shared_accum[];
 
   // shared[] should be len of num_centroids * sizeof(double)
   // for each point, add to shared[cent_idx]
@@ -74,6 +94,15 @@ __global__ static void find_nearest_cluster(double *dev_points,
 
   dev_cluster[point_id] = min_index;
 }
+
+__global__ static void assign_and_accum_centroids(double *dev_points,
+                                            double *dev_centroids, double *dev_old_centroids,
+                                            int *dev_cluster, int num_points,
+                                            int num_coords, int num_centroids) {
+  find_nearest_cluster(dev_points, dev_old_centroids, dev_cluster, num_points, num_coords, num_centroids);
+  accum_centroids(dev_points, dev_centroids, dev_cluster, num_points, num_coords, num_centroids);
+}
+
 
 __global__ static void compute_converged(double *centroids,
                                       double *old_centroids, int num_centroids,
@@ -108,6 +137,10 @@ __global__ static void compute_converged(double *centroids,
     //printf("converged is %d\n", shared[0]);
   }
 }
+
+/*
+ * kmeans
+ */
 
 double **kmeans(double **const points, double **centroids,
                 double **old_centroids, int num_points, int num_coords,
@@ -145,6 +178,7 @@ double **kmeans(double **const points, double **centroids,
   const size_t shared_mem_comparison = reduction_threads * sizeof(bool);
 
   cudaSetDevice(0);
+  //cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 
 #ifdef DEBUG
   cudaDeviceProp prop;
@@ -190,15 +224,23 @@ double **kmeans(double **const points, double **centroids,
   clock_t start = clock();
 
   do {
-    cudaMemcpy(dev_centroids, flat_centroids,
+    cudaMemcpy(dev_old_centroids, flat_old_centroids,
+               num_centroids * num_coords * sizeof(double),
+               cudaMemcpyHostToDevice);
+    cudaCheckError("copy flat_old_centroids into dev_old_centroids");
+    /*cudaMemcpy(dev_centroids, flat_centroids,
                num_centroids * num_coords * sizeof(double),
                cudaMemcpyHostToDevice);
     cudaCheckError("copy flat_centroids into dev_centroids");
+    */
+    cudaMemset(dev_centroids, 0, num_centroids * num_coords * sizeof(double));
+    cudaCheckError("memset centroids");
+
 
     // for each point in dev_points, finds the nearest centroid from 
     // dev_centroids, and stores the index in dev_cluster
-    find_nearest_cluster<<<num_blocks, threads_per_block,
-                           shared_mem_per_block>>>(dev_points, dev_centroids,
+    assign_and_accum_centroids<<<num_blocks, threads_per_block,
+                           shared_mem_per_block>>>(dev_points, dev_centroids, dev_old_centroids,
                                                    dev_cluster, num_points,
                                                    num_coords, num_centroids);
 
@@ -213,6 +255,11 @@ double **kmeans(double **const points, double **centroids,
     cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int),
                cudaMemcpyDeviceToHost);
     cudaCheckError("copy point->cluster map back to host");
+    cudaMemcpy(flat_centroids, dev_centroids, num_centroids * num_coords * sizeof(double),
+               cudaMemcpyDeviceToHost);
+    cudaCheckError("copy centroids back to host");
+
+    unflatten_1D_array(flat_centroids, centroids, num_centroids, num_coords);
 
     for (int i = 0; i < num_points; ++i) {
       // get which cluster the point belongs to 
@@ -222,10 +269,6 @@ double **kmeans(double **const points, double **centroids,
       // increment cluster_size at the correct index
       ++cluster_size[cluster_idx];
       assert(cluster_size[cluster_idx] < num_points);
-
-      // add the point to the centroid's total
-      for (int j = 0; j < num_coords; ++j)
-        centroids[cluster_idx][j] += points[i][j];
     }
 
     // scale each centroid's sum by 1/cluster_size
@@ -289,6 +332,10 @@ double **kmeans(double **const points, double **centroids,
   return centroids;
 }
 
+/*
+ * Utility Functions
+ */
+
 void cudaCheckError(const char *msg) {
   cudaError_t err = cudaGetLastError();
   if (cudaSuccess != err) {
@@ -301,4 +348,10 @@ void flatten_2D_array(double **src, double *dest, int r, int c) {
   for (int i = 0; i < r; ++i)
     for (int j = 0; j < c; ++j)
       dest[i * c + j] = src[i][j];
+}
+
+void unflatten_1D_array(double *src, double **dest, int r, int c) {
+  for (int i = 0; i < r; ++i)
+    for (int j = 0; j < c; ++j)
+      dest[i][j] = src[i*c + j];
 }
