@@ -303,7 +303,7 @@ double **kmeans(double **const points, double **centroids,
       for (int j = 0; j < num_coords; ++j) {
         // ensure that we don't divide by 0
         if (cluster_size[i] > 0) {
-          centroids[i][j] /= cluster_size[i];
+          centroids[i][j] *= (1.0/cluster_size[i]);
         } else
           assert(0);
       }
