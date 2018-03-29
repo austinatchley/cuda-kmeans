@@ -84,12 +84,21 @@ int main(int argc, char *argv[]) {
   int *iterations = (int *)malloc(sizeof(int));
   double *duration = (double *)malloc(sizeof(double));
 
+#ifdef DEBUG
+  clock_t begin_time = clock();
+#endif
+
   double **final_centroids = kmeans(
       points, centroids, old_centroids, num_points, num_coords, num_centroids,
       cluster, cluster_size, iterations, max_iterations, threshold, duration);
 
   cout << *iterations << endl;
   cout << *duration << endl;
+
+#ifdef DEBUG
+  double end_to_end = (clock() - begin_time) / (double) CLOCKS_PER_SEC;
+  cout << end_to_end << endl;
+#endif
 
   print_point_array(points, num_points, num_coords);
   print_point_array(final_centroids, num_centroids, num_coords);

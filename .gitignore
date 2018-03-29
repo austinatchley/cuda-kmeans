@@ -2,6 +2,7 @@
 *.o
 *.in
 sample/
+*.txt
 *.swp
 *.pdf
 
