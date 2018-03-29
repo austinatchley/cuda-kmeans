@@ -43,31 +43,44 @@ euclidian_dist_squared(double *points, double *centroids, int num_points,
 
 __device__ static void accum_centroids(double *dev_points, double *dev_centroids, int *dev_cluster, int num_points, int num_coords, int num_centroids) {
   
+  // shared with thread block
+  extern __shared__ double shared_centroids[];
+
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
 
-  if (point_id >= num_points)
-    return;
+  double *centroids = dev_centroids;
+
+#ifdef SHARED_MEM
+  if (point_id == 0)
+    for (int i = 0; i < num_centroids; ++i)
+      for (int j = 0; j < num_coords; ++j)
+        shared_centroids[i*num_coords + j] = 0.0;
+
+  __syncthreads();
+  centroids = shared_centroids;
+#endif
 
   for (int i = point_id; i < num_points; i+=stride) {
     int centr_idx = dev_cluster[i];
     for (int j = 0; j < num_coords; ++j) {
-      atomicAdd(&dev_centroids[centr_idx*num_coords + j], dev_points[i*num_coords + j]);
+      atomicAdd(&centroids[centr_idx*num_coords + j], dev_points[i*num_coords + j]);
     }
   }
+
+#ifdef SHARED_MEM
+  for (int i = point_id; i < num_centroids; i+=stride) {
+    for (int j = 0; j < num_coords; ++j) {
+      atomicAdd(&dev_centroids[i*num_coords + j], shared_centroids[i*num_coords + j]);
+    }
+  }
+#endif
 }
 
 __device__ static void find_nearest_cluster(double *dev_points,
                                             double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
-  // shared with thread block
-  extern __shared__ double shared_accum[];
-
-  // shared[] should be len of num_centroids * sizeof(double)
-  // for each point, add to shared[cent_idx]
-  // accumulate everything, but synchronize on shared mem
-
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
 
   if (point_id >= num_points)
@@ -170,7 +183,7 @@ double **kmeans(double **const points, double **centroids,
   const size_t threads_per_block = 128; // This is simply a design decision
   const size_t num_blocks =
       (num_points + threads_per_block - 1) / threads_per_block;
-  const size_t shared_mem_per_block = threads_per_block * sizeof(char);
+  const size_t shared_mem_per_block = num_centroids * num_coords * sizeof(double);
 
   // this is the next power of 2 after num_centroids
   // for use in compute_converged()
@@ -251,6 +264,7 @@ double **kmeans(double **const points, double **centroids,
 
     // synchronize here so that we can ensure dev_cluster has been filled
     cudaDeviceSynchronize();
+    cudaCheckError("synchronize after assign_and_accum");
 
     cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int),
                cudaMemcpyDeviceToHost);

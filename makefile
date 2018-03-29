@@ -13,7 +13,7 @@ CUDA_CPP_OBJ = $(CUDA_CPP_SRC:%.c++=%.o)
 all: kmeans
 
 kmeans: $(CUDA_CPP_OBJ)
-	$(NVCC) -arch=sm_61 -std=c++11 -g -O0 kmeans-main.o kmeans-cuda.cu -o kmeans.out
+	$(NVCC) $(CFLAGS) -arch=sm_61 -std=c++11 -g -O0 kmeans-main.o kmeans-cuda.cu -o kmeans.out
 
 
 
