@@ -116,7 +116,8 @@ def control_test():
     return float(data[2])
 
 files = ['random-n2048-d16-c16.txt', 'random-n16384-d24-c16.txt', 'random-n65536-d32-c16.txt']
-controls = {'random-n2048-d16-c16.txt': 0.317, 'random-n16384-d24-c16.txt': 11.1124, 'random-n65536-d32-c16.txt': 57.7013}
+
+controls = {'random-n2048-d16-c16.txt': 0.0269375625, 'random-n16384-d24-c16.txt': 0.2674525, 'random-n65536-d32-c16.txt': 1.49886425}
 speedups = []
 
 print('Control')
@@ -147,6 +148,6 @@ cm = plt.get_cmap('plasma')
 color = '#1f10e0'
 colors = [cm(i/len(files)) for i in range(len(files))]
 
-plot_bars([speedups], files, ['Files'], colors, 'Speedup', 'Speedup From Sequential CPU Solution')
+plot_bars([speedups], files, ['Files'], colors, 'Speedup', 'Speedup From Sequential CPU Solution With Shared Memory Optimizations')
 
 plt.savefig(graph_name, bbox_inches='tight', format='pdf')

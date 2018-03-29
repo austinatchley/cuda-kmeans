@@ -1,6 +1,6 @@
 CFLAGS=
 
-OPTIM = -O0
+OPTIM = -O3
 NVCC = nvcc
 NVCCFLAGS = $(CFLAGS) -I/opt/cuda-8.0/include -L/opt/cuda-8.0/lib64 -lcuda -lcudart --ptxas-options=-v -std=c++11
 

@@ -71,8 +71,9 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
   __syncthreads();
 
   // add each thread block's centroids from shared memory
-  for (int i = threadIdx.x; i < num_centroids*num_coords; i+=blockDim.x) {
-      atomicAdd(dev_centroids + i, shared_centroids[i]);
+  for (int i = threadIdx.x; i < num_centroids; i+=blockDim.x) {
+    for (int j = 0; j < num_coords; ++j) {
+      atomicAdd(dev_centroids + i*num_coords + j, shared_centroids[i*num_coords + j]);
     }
   }
 
@@ -182,7 +183,7 @@ double **kmeans(double **const points, double **centroids,
   for (int i = 0; i < num_centroids; ++i)
     cluster_size[i] = 0;
 
-  const size_t threads_per_block = 32; // This is simply a design decision
+  const size_t threads_per_block = 256; // This is simply a design decision
   const size_t num_blocks =
       (num_points + threads_per_block - 1) / threads_per_block;
   const size_t shared_mem_per_block = num_centroids * num_coords * sizeof(double);

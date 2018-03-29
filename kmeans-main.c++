@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 
 #ifdef DEBUG
   double end_to_end = (clock() - begin_time) / (double)CLOCKS_PER_SEC;
-  cout << end_to_end << endl;
+  cout << "end to end: " << end_to_end << endl;
 #endif
 
   print_point_array(points, num_points, num_coords);
