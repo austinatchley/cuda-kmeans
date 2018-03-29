@@ -4,53 +4,75 @@ import sys
 import csv
 import subprocess
 import numpy as np
+
+import matplotlib as mpl
+mpl.use('Agg')
+
 import matplotlib.pyplot as plt
 
 from io import StringIO
 
+def plot_bars(barGroups, barNames, groupNames, colors, ylabel='', title='', width=0.8):
+    '''Plot a grouped bar chart
+    barGroups  - list of groups, where each group is a list of bar heights
+    barNames   - list containing the name of each bar within any group
+    groupNames - list containing the name of each group
+    colors     - list containing the color for each bar within a group
+    ylabel     - label for the y-axis
+    title      - title
+    '''
+    fig, ax = plt.subplots()
+    offset = lambda items, off: [x + off for x in items]
+
+    maxlen = max(len(group) for group in barGroups)
+    xvals = range(len(barGroups))
+    
+    for i, bars in enumerate(zip(*barGroups)):
+        print(bars)
+        plt.bar(offset(xvals, i * width/maxlen), bars, width/maxlen, color=colors[i])
+
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    ax.set_xticks(offset(xvals, width / 2))
+    ax.set_xticklabels(groupNames)
+
+    # Shrink current axis by 20%
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+
+    # Put a legend to the right of the current axis
+    ax.legend(barNames, loc='upper left', bbox_to_anchor=(1, 1))
+
+
 TESTS = 2
 
-if len(sys.argv) < 6:
+if len(sys.argv) < 3:
     print(
-        "./harness [version] -c [clusters] -t [threshold] -i [iterations] -w [max cores to test] -I [path/to/file] "
+        './harness -c [clusters] -t [threshold] -i [iterations]'
     )
     sys.exit(0)
 
-if sys.argv[1] != '1':
-    version = '-' + sys.argv[1]
-else:
-    version = ''
+c = sys.argv[1]
+t = sys.argv[2]
+i = sys.argv[3]
 
-c = sys.argv[2]
-t = sys.argv[3]
-i = sys.argv[4]
-w = sys.argv[5]
-I = sys.argv[6]
-
-args = "./kmeans" + version  + ".out -c " + c +    \
-    "  -t " + t +                 \
-    " -i " + i  +                 \
-    " -w " + w  +                 \
-    " -I " + I
-
-cores = int(w)
-times = []
-times_spin = []
+args = './kmeans.out -c ' + c +    \
+    '  -t ' + t +                 \
+    ' -i ' + i  +                 \
+    ' -I sample/sample.in'
 
 
-def do_test(i, cores, spin):
+def do_test(i, infile):
     arg_list = args.split()
-    arg_list[8] = str(cores)
+    arg_list[8] = 'sample/' + infile
 
-    if spin:
-        arg_list.append('-l')
-        print(" ".join(str(val) for val in arg_list))
+    print(' '.join(str(val) for val in arg_list))
 
     ret_val = 0
     try:
         ret_val = run(arg_list)
     except:
-        print("Error. Skipping test case")
+        print('Error. Skipping test case')
         ret_val = -1
     return ret_val
 
@@ -85,66 +107,41 @@ def control_test():
     for row in reader:
         data.append(' '.join(element.rstrip() for element in row))
 
-    print("Duration:", float(data[2]))
+    print('Duration:', float(data[2]))
     return float(data[2])
 
+files = ['random-n2048-d16-c16.txt', 'random-n16384-d24-c16.txt', 'random-n65536-d32-c16.txt']
+controls = {'random-n2048-d16-c16.txt': 0.317, 'random-n16384-d24-c16.txt': 11.1124, 'random-n65536-d32-c16.txt': 57.7013}
+speedups = []
 
-print("Control")
+print('Control')
 control_test()
-control = control_test()
-print("")
-for core in range(1, cores + 1):
-    do_test(-1, core, False)
+control_test()
+print('')
+for f in files:
+    do_test(-1, f)
 
     both = 0.0
-    both_spin = 0.0
     tests_completed = 0
-    tests_completed_spin = 0
 
     for i in range(TESTS):
-        print("\nIteration ", i, "with ", core, "cores. Mutex")
-        val = do_test(i, core, False)
+        print('\nIteration ', i, 'with file ', f, '.')
+        val = do_test(i, f)
         if val != -1:
             both += val
             tests_completed += 1
-    for i in range(TESTS):
-        print("\nIteration ", i, "with ", core, "cores. Spinlock")
-        val = do_test(i, core, True)
-        if val != -1:
-            both_spin += val
-            tests_completed_spin += 1
 
     average = both / tests_completed
-    average_spin = both_spin / tests_completed_spin
-
-    times.insert(core, control / average)
-    times_spin.insert(core, control / average_spin)
+    speedups.append(controls[f] / average)
 
 print('\nSpeedups:')
-for time in times:
-    print(time)
+for s in speedups:
+    print(s)
 
+cm = plt.get_cmap('plasma')
 color = '#1f10e0'
-color_spin = '#ff0011'
+colors = [cm(i/len(files)) for i in range(len(files))]
 
-plt.plot(
-    list(map(int, range(1,
-                        int(cores) + 1))),
-    times,
-    c=color,
-    alpha=0.8,
-    marker='o')
-plt.plot(
-    list(map(int, range(1,
-                        int(cores) + 1))),
-    times_spin,
-    c=color_spin,
-    alpha=0.8,
-    marker='o')
+plot_bars([speedups], files, ['Files'], colors, 'Speedup', 'Speedup From Sequential CPU Solution')
 
-plt.legend(['Mutex', 'Spinlock'])
-
-plt.xlabel('Number of Cores')
-plt.ylabel('Speedup')
-#plt.show()
-plt.savefig("graph" + version + ".pdf", bbox_inches='tight', format='pdf')
+plt.savefig('speedup_graph.pdf', bbox_inches='tight', format='pdf')

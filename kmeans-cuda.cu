@@ -12,6 +12,10 @@
 
 __device__ bool converged = false;
 
+/*
+ * Prototypes
+ */
+
 void cudaCheckError(const char *msg);
 void flatten_2D_array(double **src, double *dest, int r, int c);
 
@@ -108,7 +112,7 @@ __global__ static void compute_converged(double *centroids,
 double **kmeans(double **const points, double **centroids,
                 double **old_centroids, int num_points, int num_coords,
                 int num_centroids, int *const cluster, int *cluster_size,
-                int *num_iterations, int max_iterations, double threshold) {
+                int *num_iterations, int max_iterations, double threshold, double *time_elapsed) {
 
   double *dev_points;
   double *dev_centroids;
@@ -169,6 +173,8 @@ double **kmeans(double **const points, double **centroids,
 
   flatten_2D_array(centroids, flat_centroids, num_centroids, num_coords);
   flatten_2D_array(old_centroids, flat_old_centroids, num_centroids, num_coords);
+
+  clock_t start = clock();
 
   do {
     cudaMemcpy(dev_centroids, flat_centroids,
@@ -254,6 +260,8 @@ double **kmeans(double **const points, double **centroids,
     }
 
   } while (++iterations < max_iterations);
+
+  *time_elapsed = (clock() - start) / (double)CLOCKS_PER_SEC;
 
   cudaFree(dev_points);
   cudaFree(dev_centroids);

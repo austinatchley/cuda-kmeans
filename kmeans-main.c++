@@ -82,17 +82,14 @@ int main(int argc, char *argv[]) {
   int *cluster_size = (int *)malloc(num_centroids * sizeof(int));
 
   int *iterations = (int *)malloc(sizeof(int));
-
-  clock_t start = clock();
+  double *duration = (double *)malloc(sizeof(double));
 
   double **final_centroids = kmeans(
       points, centroids, old_centroids, num_points, num_coords, num_centroids,
-      cluster, cluster_size, iterations, max_iterations, threshold);
-
-  double duration = (clock() - start) / (double)CLOCKS_PER_SEC;
+      cluster, cluster_size, iterations, max_iterations, threshold, duration);
 
   cout << *iterations << endl;
-  cout << duration << endl;
+  cout << *duration << endl;
 
   print_point_array(points, num_points, num_coords);
   print_point_array(final_centroids, num_centroids, num_coords);
