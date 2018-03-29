@@ -44,17 +44,22 @@ def plot_bars(barGroups, barNames, groupNames, colors, ylabel='', title='', widt
     ax.legend(barNames, loc='upper left', bbox_to_anchor=(1, 1))
 
 
-TESTS = 2
+TESTS = 4
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 4:
     print(
-        './harness -c [clusters] -t [threshold] -i [iterations]'
+            './harness -c [clusters] -t [threshold] -i [iterations] [opional: graph name]'
     )
     sys.exit(0)
 
 c = sys.argv[1]
 t = sys.argv[2]
 i = sys.argv[3]
+
+if len(sys.argv) >= 5:
+    graph_name = sys.argv[4]
+else:
+    graph_name = 'speedup_graph.pdf'
 
 args = './kmeans.out -c ' + c +    \
     '  -t ' + t +                 \
@@ -144,4 +149,4 @@ colors = [cm(i/len(files)) for i in range(len(files))]
 
 plot_bars([speedups], files, ['Files'], colors, 'Speedup', 'Speedup From Sequential CPU Solution')
 
-plt.savefig('speedup_graph.pdf', bbox_inches='tight', format='pdf')
+plt.savefig(graph_name, bbox_inches='tight', format='pdf')

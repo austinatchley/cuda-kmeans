@@ -41,7 +41,7 @@ euclidian_dist_squared(double *points, double *centroids, int num_points,
   return dist;
 }
 
-__device__ static void accum_centroids(double *dev_points, double *dev_centroids, int *dev_cluster, int num_points, int num_coords, int num_centroids) {
+__global__ static void accum_centroids(double *dev_points, double *dev_centroids, int *dev_cluster, int num_points, int num_coords, int num_centroids) {
   
   // shared with thread block
   extern __shared__ double shared_centroids[];
@@ -49,35 +49,55 @@ __device__ static void accum_centroids(double *dev_points, double *dev_centroids
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
 
-  double *centroids = dev_centroids;
+  if (point_id >= num_points && point_id >= num_centroids)
+    return;
 
 #ifdef SHARED_MEM
-  if (point_id == 0)
+
+  if (threadIdx.x == 0)
     for (int i = 0; i < num_centroids; ++i)
       for (int j = 0; j < num_coords; ++j)
         shared_centroids[i*num_coords + j] = 0.0;
 
   __syncthreads();
-  centroids = shared_centroids;
-#endif
 
   for (int i = point_id; i < num_points; i+=stride) {
     int centr_idx = dev_cluster[i];
     for (int j = 0; j < num_coords; ++j) {
-      atomicAdd(&centroids[centr_idx*num_coords + j], dev_points[i*num_coords + j]);
+      atomicAdd(shared_centroids + centr_idx*num_coords + j, dev_points[i*num_coords + j]);
+    }
+  }
+  __syncthreads();
+
+  for (int i = point_id; i < num_centroids; i+=stride) {
+    for (int j = 0; j < num_coords; ++j) {
+      atomicAdd(dev_centroids + i*num_coords + j, shared_centroids[i*num_coords + j]);
     }
   }
 
-#ifdef SHARED_MEM
-  for (int i = point_id; i < num_centroids; i+=stride) {
+  if(threadIdx.x == 0){
+    for(int i = 0; i < num_centroids; ++i){
+      for(int j = 0; j < num_coords; ++j) {
+        printf("%f ",dev_centroids[i*num_coords+j]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+
+#else
+
+  for (int i = point_id; i < num_points; i+=stride) {
+    int centr_idx = dev_cluster[i];
     for (int j = 0; j < num_coords; ++j) {
-      atomicAdd(&dev_centroids[i*num_coords + j], shared_centroids[i*num_coords + j]);
+      atomicAdd(&dev_centroids[centr_idx*num_coords + j], dev_points[i*num_coords + j]);
     }
   }
+
 #endif
 }
 
-__device__ static void find_nearest_cluster(double *dev_points,
+__global__ static void find_nearest_cluster(double *dev_points,
                                             double *dev_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
@@ -108,13 +128,14 @@ __device__ static void find_nearest_cluster(double *dev_points,
   dev_cluster[point_id] = min_index;
 }
 
-__global__ static void assign_and_accum_centroids(double *dev_points,
+/*__global__ static void assign_and_accum_centroids(double *dev_points,
                                             double *dev_centroids, double *dev_old_centroids,
                                             int *dev_cluster, int num_points,
                                             int num_coords, int num_centroids) {
   find_nearest_cluster(dev_points, dev_old_centroids, dev_cluster, num_points, num_coords, num_centroids);
   accum_centroids(dev_points, dev_centroids, dev_cluster, num_points, num_coords, num_centroids);
 }
+*/
 
 
 __global__ static void compute_converged(double *centroids,
@@ -252,19 +273,23 @@ double **kmeans(double **const points, double **centroids,
 
     // for each point in dev_points, finds the nearest centroid from 
     // dev_centroids, and stores the index in dev_cluster
-    assign_and_accum_centroids<<<num_blocks, threads_per_block,
+    /*assign_and_accum_centroids<<<num_blocks, threads_per_block,
                            shared_mem_per_block>>>(dev_points, dev_centroids, dev_old_centroids,
                                                    dev_cluster, num_points,
                                                    num_coords, num_centroids);
+                                                   */
 
-    // while we are waiting for the GPU kernel, clear centroids
-    for (int i = 0; i < num_centroids; ++i)
-      for (int j = 0; j < num_coords; ++j)
-        centroids[i][j] = 0.0;
+    find_nearest_cluster<<<num_blocks,threads_per_block,shared_mem_per_block>>>(dev_points, dev_old_centroids, dev_cluster, num_points, num_coords, num_centroids);
+
+    cudaDeviceSynchronize();
+    cudaCheckError("synchronize after assign");
+
+    accum_centroids<<<num_blocks,threads_per_block,shared_mem_per_block>>>(dev_points, dev_centroids, dev_cluster, num_points, num_coords, num_centroids);
+
 
     // synchronize here so that we can ensure dev_cluster has been filled
     cudaDeviceSynchronize();
-    cudaCheckError("synchronize after assign_and_accum");
+    cudaCheckError("synchronize after accum");
 
     cudaMemcpy(cluster, dev_cluster, num_points * sizeof(int),
                cudaMemcpyDeviceToHost);
