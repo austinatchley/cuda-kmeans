@@ -47,12 +47,13 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
   extern __shared__ double shared_centroids[];
 
   int point_id = blockDim.x * blockIdx.x + threadIdx.x;
-  int stride = blockDim.x;
+  int stride = blockDim.x * gridDim.x;
 
   if (point_id >= num_points && point_id >= num_centroids)
     return;
 
 #ifdef SHARED_MEM
+  stride = blockDim.x;
 
   if (threadIdx.x == 0)
     for (int i = 0; i < num_centroids; ++i)
@@ -73,16 +74,6 @@ __global__ static void accum_centroids(double *dev_points, double *dev_centroids
     for (int j = 0; j < num_coords; ++j) {
       atomicAdd(dev_centroids + i*num_coords + j, shared_centroids[i*num_coords + j]);
     }
-  }
-
-  if(threadIdx.x == 0){
-    for(int i = 0; i < num_centroids; ++i){
-      for(int j = 0; j < num_coords; ++j) {
-        printf("%f ",dev_centroids[i*num_coords+j]);
-      }
-      printf("\n");
-    }
-    printf("\n");
   }
 
 #else
